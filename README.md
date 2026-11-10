@@ -30,6 +30,12 @@ of ReLU neurons. The attack receives only the query function. The
 evaluator uses the true parameters to compare recovered neurons after
 aligning them by hidden bias.
 
+## Use of Generative AI
+
+OpenAI ChatGPT was used to assist with understanding the general approach and assist in writing the toy examples and build script.
+
+ChatGPT also helped debug an implementation issue: a recovered hidden bias was computed but never stored.  The initial README text and this disclosure were also drafted with ChatGPT. 
+
 ## Reference
 
 Carlini, N., Jagielski, M., and Mironov, I. (2020).
