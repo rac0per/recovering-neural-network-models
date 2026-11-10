@@ -1,6 +1,6 @@
 from random import Random
 
-from find_kinks import find_kinks
+from find_kinks import find_scan_line
 from target_model import make_target, predict
 
 
@@ -15,7 +15,7 @@ def gradient(query, x, eps):
 
 
 def recover_network(query):
-    kinks = find_kinks(query)
+    origin, kinks = find_scan_line(query)
     bounds = [-1.1, *kinks, 0.1]
     recovered = {"W": [], "b": [], "a": [], "b_out": query([-1.1] * 10)}
 
@@ -24,27 +24,33 @@ def recover_network(query):
         offset = min(1e-3, gap / 4)
         eps = offset / 4
 
-        left = gradient(query, [t - offset] * 10, eps)
-        right = gradient(query, [t + offset] * 10, eps)
+        left_point = [value + (t - offset) for value in origin]
+        right_point = [value + (t + offset) for value in origin]
+        left = gradient(query, left_point, eps)
+        right = gradient(query, right_point, eps)
+
         jump = [r - l for l, r in zip(left, right)]
 
         a = sum(jump)
         if a <= 0.0:
             raise RuntimeError(f"Invalid gradient jump at t={t}")
 
-        recovered["W"].append([value / a for value in jump])
-        recovered["b"].append(-t)
+        w = [value / a for value in jump]
+        b = -t - sum(wi * xi for wi, xi in zip(w, origin))
+        recovered["W"].append(w)
+        recovered["b"].append(b)
+
         recovered["a"].append(a)
 
     return recovered
 
 
 def max_parameter_error(recovered, truth):
-    # Align the target neurons with the order in which their kinks were found.
-    order = sorted(range(10), key=lambda j: -truth["b"][j])
+    recovered_order = sorted(range(10), key=lambda i: -recovered["b"][i])
+    truth_order = sorted(range(10), key=lambda j: -truth["b"][j])
     errors = [abs(recovered["b_out"] - truth["b_out"])]
 
-    for i, j in enumerate(order):
+    for i, j in zip(recovered_order, truth_order):
         errors.append(abs(recovered["b"][i] - truth["b"][j]))
         errors.append(abs(recovered["a"][i] - truth["a"][j]))
         errors.extend(

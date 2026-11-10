@@ -1,13 +1,20 @@
 from target_model import make_target
+from random import Random
+
+class KinkSearchError(RuntimeError):
+    pass
 
 
-def find_kinks(query, expected=10):
+def find_kinks(query, expected=10, *, origin=None):
+    if origin is None:
+        origin = [0.0] * 10
+
     lo, hi = -1.1, 0.1
 
     for segments in (128, 256, 512, 1024, 2048, 4096, 8192):
         step = (hi - lo) / segments
         grid = [lo + i * step for i in range(segments + 1)]
-        values = [query([t] * 10) for t in grid]
+        values = [query([value + t for value in origin]) for t in grid]
         slopes = [(y2 - y1) / step for y1, y2 in zip(values, values[1:])]
 
         groups = []
@@ -28,7 +35,16 @@ def find_kinks(query, expected=10):
                 kinks.append((c_left - c_right) / (m_right - m_left))
             return kinks
 
-    raise RuntimeError("Could not separate all kinks with the current grid.")
+    raise KinkSearchError("Could not separate all kinks with the current grid.")
+
+def find_scan_line(query):
+    origin = [0.0] * 10
+    try:
+        return origin, find_kinks(query, origin=origin)
+    except KinkSearchError:
+        rng = Random(2026)
+        origin = [rng.uniform(-0.05, 0.05) for _ in range(10)]
+        return origin, find_kinks(query, origin=origin)
 
 
 if __name__ == "__main__":
